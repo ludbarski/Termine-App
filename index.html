@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schnell-Termine</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-image: url('hintergrund.jpg');
+            background-size: cover;
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+        .header {
+            background: #910c93;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-title {
+            flex: 1;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .btn-export {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-export:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            background: #f8f9fa;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex: 0 0 auto;
+            padding: 12px 15px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            background: #f0f0f0;
+        }
+        .tab-btn.active {
+            color: #910c93;
+            border-bottom-color: #910c93;
+        }
+        .input-section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .input-section.disabled {
+            background: #f9f9f9;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #910c93;
+            box-shadow: 0 0 0 3px rgba(145, 12, 147, 0.1);
+        }
+        .btn-add {
+            width: 100%;
+            padding: 12px;
+            background: #910c93;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-add:hover {
+            background: #7a0a78;
+        }
+        .btn-add:active {
+            transform: scale(0.98);
+        }
+        .filter-btns {
+            display: flex;
+            gap: 8px;
+            padding: 10px 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .filter-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: #910c93;
+            color: white;
+            border-color: #910c93;
+        }
+        .terms-section {
+            padding: 20px;
+            min-height: 200px;
+        }
+        .terms-empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .term-item {
+            background: #f8f9fa;
+            border-left: 4px solid #910c93;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .term-item.completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+            opacity: 0.7;
+        }
+        .term-item.completed .term-title {
+            text-decoration: line-through;
+            color: #999;
+        }
+        .term-item.overdue {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .term-checkbox {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+        .term-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .term-title {
+            font-weight: 600;
+            color: #333;
+            word-break: break-word;
+        }
+        .term-time {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .term-note {
+            font-size: 12px;
+            color: #888;
+            margin-top: 6px;
+            font-style: italic;
+            word-break: break-word;
+        }
+        .term-source {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+        .term-delete {
+            flex-shrink: 0;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .term-delete:hover {
+            background: #ff5252;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-title">
+                <h1>📅 Schnell-Termine</h1>
+                <p>Schnell erfassen, nicht vergessen</p>
+            </div>
+            <button class="btn-export" onclick="exportToPDF()">📥 PDF Export</button>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(0, this)">Alle</button>
+            <button class="tab-btn" onclick="switchTab(1, this)">Micha</button>
+            <button class="tab-btn" onclick="switchTab(2, this)">Vatta</button>
+            <button class="tab-btn" onclick="switchTab(3, this)">Thekla</button>
+            <button class="tab-btn" onclick="switchTab(4, this)">Sonstiges</button>
+        </div>
+
+        <!-- Tab 0: Alle -->
+        <div class="tab-content active" data-tab="0">
+            <div class="input-section disabled">
+                <p style="text-align: center; color: #999; font-size: 12px;">Übersicht aller Termine – Erfassungen in den anderen Listen möglich</p>
+            </div>
+            <div class="filter-btns">
+                <button class="filter-btn active" onclick="setFilter(0, 'all')">Alle</button>
+                <button class="filter-btn" onclick="setFilter(0, 'pending')">Offen</button>
+                <button class="filter-btn" onclick="setFilter(0, 'completed')">Erledigt</button>
+            </div>
+            <div class="terms-section" id="termsList0">
+                <div class="terms-empty">Keine Termine erfasst</div>
+            </div>
+        </div>
+
+        <!-- Tab 1: Micha -->
+        <div class="tab-content" data-tab="1">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="title1">Was?</label>
+                    <input type="text" id="title1" class="title-input" placeholder="z.B. Anruf mit Kundenservice" required>
+                </div>
+                <div class="form-group">
+                    <label for="date1">Wann?</label>
+                    <input type="date" id="date1" class="date-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="time1">Uhrzeit</label>
+                    <input type="time" id="time1" class="time-input">
+                </div>
+                <div class="form-group">
+                    <label for="note1">Notiz (optional)</label>
+                    <textarea id="note1" class="note-input" placeholder="Weitere Infos..."></textarea>
+                </div>
+                <button class="btn-add" onclick="addTerm(1)">+ Termin erfassen</button>
+            </div>
+            <div class="filter-btns">
+                <button class="filter-btn active" onclick="setFilter(1, 'all')">Alle</button>
+                <button class="filter-btn" onclick="setFilter(1, 'pending')">Offen</button>
+                <button class="filter-btn" onclick="setFilter(1, 'completed')">Erledigt</button>
+            </div>
+            <div class="terms-section" id="termsList1">
+                <div class="terms-empty">Keine Termine erfasst</div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Vatta -->
+        <div class="tab-content" data-tab="2">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="title2">Was?</label>
+                    <input type="text" id="title2" class="title-input" placeholder="z.B. Anruf mit Kundenservice" required>
+                </div>
+                <div class="form-group">
+                    <label for="date2">Wann?</label>
+                    <input type="date" id="date2" class="date-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="time2">Uhrzeit</label>
+                    <input type="time" id="time2" class="time-input">
+                </div>
+                <div class="form-group">
+                    <label for="note2">Notiz (optional)</label>
+                    <textarea id="note2" class="note-input" placeholder="Weitere Infos..."></textarea>
+                </div>
+                <button class="btn-add" onclick="addTerm(2)">+ Termin erfassen</button>
+            </div>
+            <div class="filter-btns">
+                <button class="filter-btn active" onclick="setFilter(2, 'all')">Alle</button>
+                <button class="filter-btn" onclick="setFilter(2, 'pending')">Offen</button>
+                <button class="filter-btn" onclick="setFilter(2, 'completed')">Erledigt</button>
+            </div>
+            <div class="terms-section" id="termsList2">
+                <div class="terms-empty">Keine Termine erfasst</div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Thekla -->
+        <div class="tab-content" data-tab="3">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="title3">Was?</label>
+                    <input type="text" id="title3" class="title-input" placeholder="z.B. Anruf mit Kundenservice" required>
+                </div>
+                <div class="form-group">
+                    <label for="date3">Wann?</label>
+                    <input type="date" id="date3" class="date-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="time3">Uhrzeit</label>
+                    <input type="time" id="time3" class="time-input">
+                </div>
+                <div class="form-group">
+                    <label for="note3">Notiz (optional)</label>
+                    <textarea id="note3" class="note-input" placeholder="Weitere Infos..."></textarea>
+                </div>
+                <button class="btn-add" onclick="addTerm(3)">+ Termin erfassen</button>
+            </div>
+            <div class="filter-btns">
+                <button class="filter-btn active" onclick="setFilter(3, 'all')">Alle</button>
+                <button class="filter-btn" onclick="setFilter(3, 'pending')">Offen</button>
+                <button class="filter-btn" onclick="setFilter(3, 'completed')">Erledigt</button>
+            </div>
+            <div class="terms-section" id="termsList3">
+                <div class="terms-empty">Keine Termine erfasst</div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Sonstiges -->
+        <div class="tab-content" data-tab="4">
+            <div class="input-section">
+                <div class="form-group">
+                    <label for="title4">Was?</label>
+                    <input type="text" id="title4" class="title-input" placeholder="z.B. Anruf mit Kundenservice" required>
+                </div>
+                <div class="form-group">
+                    <label for="date4">Wann?</label>
+                    <input type="date" id="date4" class="date-input" required>
+                </div>
+                <div class="form-group">
+                    <label for="time4">Uhrzeit</label>
+                    <input type="time" id="time4" class="time-input">
+                </div>
+                <div class="form-group">
+                    <label for="note4">Notiz (optional)</label>
+                    <textarea id="note4" class="note-input" placeholder="Weitere Infos..."></textarea>
+                </div>
+                <button class="btn-add" onclick="addTerm(4)">+ Termin erfassen</button>
+            </div>
+            <div class="filter-btns">
+                <button class="filter-btn active" onclick="setFilter(4, 'all')">Alle</button>
+                <button class="filter-btn" onclick="setFilter(4, 'pending')">Offen</button>
+                <button class="filter-btn" onclick="setFilter(4, 'completed')">Erledigt</button>
+            </div>
+            <div class="terms-section" id="termsList4">
+                <div class="terms-empty">Keine Termine erfasst</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const filters = ['all', 'all', 'all', 'all', 'all'];
+        const listNames = ['Alle', 'Micha', 'Vatta', 'Thekla', 'Sonstiges'];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Heute als Standarddatum setzen
+        for (let i = 1; i < 5; i++) {
+            const dateInput = document.getElementById(`date${i}`);
+            if (dateInput) {
+                dateInput.valueAsDate = new Date(today);
+            }
+        }
+
+        function switchTab(tabIndex, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabIndex}"]`).classList.add('active');
+            btnElement.classList.add('active');
+            
+            if (tabIndex === 0) {
+                renderAllTerms();
+            }
+        }
+
+        function addTerm(tabIndex) {
+            if (tabIndex === 0) return; // "Alle" nicht editierbar
+
+            const title = document.getElementById(`title${tabIndex}`).value.trim();
+            const date = document.getElementById(`date${tabIndex}`).value;
+            const time = document.getElementById(`time${tabIndex}`).value;
+            const note = document.getElementById(`note${tabIndex}`).value.trim();
+
+            if (!title || !date) {
+                alert('Bitte Termin und Datum eintragen');
+                return;
+            }
+
+            const term = {
+                id: Date.now(),
+                title,
+                date,
+                time,
+                note,
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+
+            const terms = getTerms(tabIndex);
+            terms.push(term);
+            localStorage.setItem(`terms${tabIndex}`, JSON.stringify(terms));
+
+            document.getElementById(`title${tabIndex}`).value = '';
+            document.getElementById(`date${tabIndex}`).valueAsDate = new Date(today);
+            document.getElementById(`time${tabIndex}`).value = '';
+            document.getElementById(`note${tabIndex}`).value = '';
+            document.getElementById(`title${tabIndex}`).focus();
+
+            renderTerms(tabIndex);
+            renderAllTerms();
+        }
+
+        function getTerms(tabIndex) {
+            const data = localStorage.getItem(`terms${tabIndex}`);
+            return data ? JSON.parse(data) : [];
+        }
+
+        function deleteTerms(tabIndex, id) {
+            let terms = getTerms(tabIndex);
+            terms = terms.filter(t => t.id !== id);
+            localStorage.setItem(`terms${tabIndex}`, JSON.stringify(terms));
+            renderTerms(tabIndex);
+            renderAllTerms();
+        }
+
+        function toggleCompleted(tabIndex, id) {
+            let terms = getTerms(tabIndex);
+            const term = terms.find(t => t.id === id);
+            if (term) {
+                term.completed = !term.completed;
+                localStorage.setItem(`terms${tabIndex}`, JSON.stringify(terms));
+                renderTerms(tabIndex);
+                renderAllTerms();
+            }
+        }
+
+        function setFilter(tabIndex, f) {
+            filters[tabIndex] = f;
+            const filterBtns = document.querySelector(`[data-tab="${tabIndex}"]`).querySelectorAll('.filter-btn');
+            filterBtns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            if (tabIndex === 0) {
+                renderAllTerms();
+            } else {
+                renderTerms(tabIndex);
+            }
+        }
+
+        function renderAllTerms() {
+            let allTerms = [];
+
+            // Alle Termine aus Listen 1-4 sammeln
+            for (let i = 1; i < 5; i++) {
+                const terms = getTerms(i);
+                terms.forEach(term => {
+                    allTerms.push({
+                        ...term,
+                        listIndex: i
+                    });
+                });
+            }
+
+            // Nach Datum sortieren
+            allTerms.sort((a, b) => {
+                const dateA = new Date(a.date + ' ' + (a.time || '00:00'));
+                const dateB = new Date(b.date + ' ' + (b.time || '00:00'));
+                return dateA - dateB;
+            });
+
+            // Filter anwenden
+            if (filters[0] === 'pending') {
+                allTerms = allTerms.filter(t => !t.completed);
+            } else if (filters[0] === 'completed') {
+                allTerms = allTerms.filter(t => t.completed);
+            }
+
+            const termsList = document.getElementById('termsList0');
+
+            if (allTerms.length === 0) {
+                termsList.innerHTML = '<div class="terms-empty">Keine Termine</div>';
+                return;
+            }
+
+            termsList.innerHTML = allTerms.map(term => {
+                const termDate = new Date(term.date);
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const isOverdue = termDate < now && !term.completed;
+
+                let dateStr = termDate.toLocaleDateString('de-DE', { 
+                    weekday: 'short', 
+                    day: '2-digit', 
+                    month: '2-digit'
+                });
+
+                return `
+                    <div class="term-item ${term.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
+                        <input type="checkbox" class="term-checkbox" ${term.completed ? 'checked' : ''} 
+                               onchange="toggleCompletedFromAll(${term.listIndex}, ${term.id})">
+                        <div class="term-content">
+                            <div class="term-title">${escapeHtml(term.title)}</div>
+                            <div class="term-time">
+                                ${dateStr}${term.time ? ' • ' + term.time : ''}
+                                ${isOverdue ? ' ⚠️ Überfällig' : ''}
+                            </div>
+                            ${term.note ? `<div class="term-note">${escapeHtml(term.note)}</div>` : ''}
+                            <div class="term-source">👤 ${listNames[term.listIndex]}</div>
+                        </div>
+                        <button class="term-delete" onclick="deleteTerms(${term.listIndex}, ${term.id})">Löschen</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleCompletedFromAll(tabIndex, id) {
+            toggleCompleted(tabIndex, id);
+        }
+
+        function renderTerms(tabIndex) {
+            let terms = getTerms(tabIndex);
+
+            terms.sort((a, b) => {
+                const dateA = new Date(a.date + ' ' + (a.time || '00:00'));
+                const dateB = new Date(b.date + ' ' + (b.time || '00:00'));
+                return dateA - dateB;
+            });
+
+            if (filters[tabIndex] === 'pending') {
+                terms = terms.filter(t => !t.completed);
+            } else if (filters[tabIndex] === 'completed') {
+                terms = terms.filter(t => t.completed);
+            }
+
+            const termsList = document.getElementById(`termsList${tabIndex}`);
+
+            if (terms.length === 0) {
+                termsList.innerHTML = '<div class="terms-empty">Keine Termine</div>';
+                return;
+            }
+
+            termsList.innerHTML = terms.map(term => {
+                const termDate = new Date(term.date);
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const isOverdue = termDate < now && !term.completed;
+
+                let dateStr = termDate.toLocaleDateString('de-DE', { 
+                    weekday: 'short', 
+                    day: '2-digit', 
+                    month: '2-digit'
+                });
+
+                return `
+                    <div class="term-item ${term.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}">
+                        <input type="checkbox" class="term-checkbox" ${term.completed ? 'checked' : ''} 
+                               onchange="toggleCompleted(${tabIndex}, ${term.id})">
+                        <div class="term-content">
+                            <div class="term-title">${escapeHtml(term.title)}</div>
+                            <div class="term-time">
+                                ${dateStr}${term.time ? ' • ' + term.time : ''}
+                                ${isOverdue ? ' ⚠️ Überfällig' : ''}
+                            </div>
+                            ${term.note ? `<div class="term-note">${escapeHtml(term.note)}</div>` : ''}
+                        </div>
+                        <button class="term-delete" onclick="deleteTerms(${tabIndex}, ${term.id})">Löschen</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        function exportToPDF() {
+            let allTerms = [];
+
+            for (let i = 1; i < 5; i++) {
+                const terms = getTerms(i);
+                allTerms.push({
+                    listName: listNames[i],
+                    terms: terms
+                });
+            }
+
+            let htmlContent = `
+                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+                    <h1 style="text-align: center; color: #910c93; margin-bottom: 30px;">📅 ToDo Liste</h1>
+                    <p style="text-align: center; color: #666; margin-bottom: 30px;">Erstellt am ${new Date().toLocaleDateString('de-DE')}</p>
+            `;
+
+            allTerms.forEach(listGroup => {
+                const openTerms = listGroup.terms.filter(t => !t.completed);
+
+                if (openTerms.length > 0) {
+                    htmlContent += `
+                        <h2 style="color: #910c93; margin-top: 30px; margin-bottom: 15px; border-bottom: 2px solid #910c93; padding-bottom: 10px;">
+                            ${listGroup.listName}
+                        </h2>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                            <tr style="background-color: #f5f5f5;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">☐</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Aufgabe</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Datum</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Uhrzeit</th>
+                            </tr>
+                    `;
+
+                    openTerms.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        return dateA - dateB;
+                    }).forEach(term => {
+                        const termDate = new Date(term.date);
+                        const dateStr = termDate.toLocaleDateString('de-DE', { 
+                            weekday: 'short', 
+                            day: '2-digit', 
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+
+                        htmlContent += `
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #ddd;">☐</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">
+                                    <strong>${escapeHtml(term.title)}</strong>
+                                    ${term.note ? `<br><small style="color: #666;">${escapeHtml(term.note)}</small>` : ''}
+                                </td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${dateStr}</td>
+                                <td style="padding: 10px; border: 1px solid #ddd;">${term.time || '—'}</td>
+                            </tr>
+                        `;
+                    });
+
+                    htmlContent += `</table>`;
+                }
+            });
+
+            htmlContent += `
+                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #999; font-size: 12px;">
+                        <p>Gedruckt von Schnell-Termine App</p>
+                    </div>
+                </div>
+            `;
+
+            const options = {
+                margin: 10,
+                filename: `ToDo-Liste-${new Date().toLocaleDateString('de-DE')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(options).from(htmlContent).save();
+        }
+
+        // Alle Listen initialisieren
+        for (let i = 1; i < 5; i++) {
+            renderTerms(i);
+        }
+        renderAllTerms();
+    </script>
+</body>
+</html>
